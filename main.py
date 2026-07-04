@@ -9,3 +9,15 @@ def home(request,response):
 @app.route("/about")
 def about(request,response):
     response.text = "Hello from about page"
+
+@app.route("/hello/{name}")
+def greeting(request, response, name):
+    response.text = f"Assalomu aleykum {name}"
+
+@app.route("/books")
+class Books:
+    def get(self,request,response):
+        response.text = "Hello from books page"
+
+    def post(self,request,response):
+        response.text = "Endpoint to create a book"
