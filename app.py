@@ -2,6 +2,9 @@ from webob import Request,Response
 
 from parse import parse
 import inspect
+import requests
+import wsgiadapter
+
 
 class LoiqdevFrameApp:
     def __init__(self):
@@ -23,7 +26,7 @@ class LoiqdevFrameApp:
 
                 if handler is  None:
                     response.status_code = 405
-                    response.text = "Handler method {request.method} is not allowed"
+                    response.text = "Method not allowed"
                     return response
 
             handler(request, response, **kwargs)
@@ -54,4 +57,9 @@ class LoiqdevFrameApp:
             return handler
 
         return wrapper
+
+    def test_session(self):
+        session = requests.Session()
+        session.mount('http://testserver/', wsgiadapter.WSGIAdapter(self))
+        return  session
 
