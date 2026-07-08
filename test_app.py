@@ -1,13 +1,13 @@
 import pytest
 
-def test_basic_route_adding(app):
 
+def test_basic_route_adding(app):
     @app.route('/home')
     def home(req, resp):
         resp.text = "Hello from home page"
 
-def test_dublicate_routes_throws_exception(app):
 
+def test_dublicate_routes_throws_exception(app):
     @app.route('/home')
     def home(req, resp):
         resp.text = "Hello from home page"
@@ -16,6 +16,7 @@ def test_dublicate_routes_throws_exception(app):
         @app.route('/home')
         def home(req, resp):
             resp.text = "Hello from home page2"
+
 
 def test_resuests_can_be_sent_by_test_client(app, test_client):
     @app.route('/home')
@@ -26,6 +27,7 @@ def test_resuests_can_be_sent_by_test_client(app, test_client):
 
     assert response.text == "Hello from home page"
 
+
 def test_parametrized_routing(app, test_client):
     @app.route('/hello/{name}')
     def greeting(request, response, name):
@@ -34,11 +36,13 @@ def test_parametrized_routing(app, test_client):
     assert test_client.get('http://testserver/hello/Ahror').text == "Hello from Ahror"
     assert test_client.get('http://testserver/hello/Asliddin').text == "Hello from Asliddin"
 
-def test_default_response(test_client):
-    response =  test_client.get('http://testserver/nonexistent/')
 
-    assert response.text  == "Not Found"
+def test_default_response(test_client):
+    response = test_client.get('http://testserver/nonexistent/')
+
+    assert response.text == "Not Found"
     assert response.status_code == 404
+
 
 def test_class_based_get(app, test_client):
     @app.route('/books')
@@ -66,5 +70,27 @@ def test_class_based_method_not_allowed(app, test_client):
 
     response = test_client.get('http://testserver/books')
 
-    assert response.text  == "Method not allowed"
+    assert response.text == "Method not allowed"
     assert response.status_code == 405
+
+
+def test_alternative_route_adding(app, test_client):
+    def new_handler(req, resp):
+        resp.text = "Hello from new-handler"
+
+    app.add_route('/new-handler', new_handler)
+    assert test_client.get('http://testserver/new-handler').text == "Hello from new-handler"
+
+
+def test_template_handler(app, test_client):
+    @app.route('/test-template')
+    def template(req, resp):
+        resp.body = app.template(
+            "home.html",
+            context={"new_title": "Best title", "new_body": "Best body"}
+        )
+    response = test_client.get('http://testserver/test-template')
+
+    assert "Best title" in response.text
+    assert "Best body" in response.text
+    assert  "text/html" in response.headers["Content-Type"]

@@ -1,30 +1,36 @@
-from webob import Request,Response
+from webob import Request, Response
 
 from parse import parse
 import inspect
 import requests
 import wsgiadapter
+from jinja2 import Environment , FileSystemLoader
+import os
 
 
 class LoiqdevFrameApp:
-    def __init__(self):
+    def __init__(self, templates_dir="templates"):
         self.routes = dict()
 
-    def __call__(self,environ,start_response):
-       request = Request(environ)
-       response = self.handle_request(request)
-       return response(environ,start_response)
+        self.template_env = Environment(
+            loader = FileSystemLoader(os.path.abspath(templates_dir))
+        )
 
-    def handle_request(self,request):
+    def __call__(self, environ, start_response):
+        request = Request(environ)
+        response = self.handle_request(request)
+        return response(environ, start_response)
+
+    def handle_request(self, request):
         response = Response()
 
         handler, kwargs = self.find_handler(request)
 
         if handler is not None:
             if inspect.isclass(handler):
-                handler = getattr(handler(),request.method.lower(),None)
+                handler = getattr(handler(), request.method.lower(), None)
 
-                if handler is  None:
+                if handler is None:
                     response.status_code = 405
                     response.text = "Method not allowed"
                     return response
@@ -36,24 +42,27 @@ class LoiqdevFrameApp:
 
         return response
 
-    def find_handler(self,request):
-                for path, handler in self.routes.items():
-                    parsed_result = parse(path,request.path)
+    def find_handler(self, request):
+        for path, handler in self.routes.items():
+            parsed_result = parse(path, request.path)
 
-                    if parsed_result is not None:
-                        return handler, parsed_result.named
+            if parsed_result is not None:
+                return handler, parsed_result.named
 
-                return  None, None
+        return None, None
 
-    def default_response(self,response):
-        response.status_code =  404
+    def default_response(self, response):
+        response.status_code = 404
         response.text = "Not Found"
 
-    def route(self, path):
-        assert path not in self.routes , "Dublicate route. Please change the URL."
+    def add_route(self, path, handler):
+        assert path not in self.routes, "Dublicate route. Please change the URL."
 
+        self.routes[path] = handler
+
+    def route(self, path):
         def wrapper(handler):
-            self.routes[path] = handler
+            self.add_route(path, handler)
             return handler
 
         return wrapper
@@ -61,5 +70,10 @@ class LoiqdevFrameApp:
     def test_session(self):
         session = requests.Session()
         session.mount('http://testserver/', wsgiadapter.WSGIAdapter(self))
-        return  session
+        return session
 
+    def template(self, template_name, context=None):
+        if context is None:
+            context = {}
+
+        return self.template_env.get_template(template_name).render(**context).encode()
